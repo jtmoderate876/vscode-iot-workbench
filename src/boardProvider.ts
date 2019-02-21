@@ -25,7 +25,8 @@ export class BoardProvider {
 
   get list() {
     // const boardList = this.context.asAbsolutePath(
-    //     path.join(FileNames.resourcesFolderName, FileNames.boardListFileName));
+    //     path.join(FileNames.resourcesFolderName,
+    //     FileNames.boardListFileName));
     const boardsJson: BoardList = require('../resources/boardlist.json');
     return boardsJson.boards;
   }
