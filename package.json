@@ -159,14 +159,13 @@
   "scripts": {
     "vscode:prepublish": "webpack --mode production",
     "compile": "webpack --mode development --display-error-details",
-    "watch": "webpack --mode development --watch",
+    "watch": "",
     "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "npm run compile && node ./node_modules/vscode/bin/test",
+    "test": "node ./node_modules/vscode/bin/test",
     "check": "gts check",
     "clean": "gts clean",
     "fix": "gts fix",
-    "prepare": "npm run compile",
-    "pretest": "npm run compile",
+    "pretest": "webpack --mode production --display-error-details",
     "posttest": "npm run check",
     "update:package": "rm -rf node_modules && npm update --save-dev && npm update --save"
   },
