@@ -2,28 +2,52 @@
 // Licensed under the MIT License.
 
 'use strict';
-
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`   AzureFunctions${name}: ` + duration);
+}
+logTime('Begin Load');
 import * as fs from 'fs-plus';
+logTime('fs-plus');
 import * as path from 'path';
+logTime('path');
 import * as vscode from 'vscode';
-
+logTime('vscode');
 import * as utils from '../utils';
+logTime('../utils');
 import WebSiteManagementClient = require('azure-arm-website');
+logTime('azure-arm-website');
 import {Component, ComponentType} from './Interfaces/Component';
+logTime('./Interfaces/Component');
 import {Provisionable} from './Interfaces/Provisionable';
+logTime('./Interfaces/Provisionable');
 import {Deployable} from './Interfaces/Deployable';
-
+logTime('./Interfaces/Deployable');
 import {ConfigHandler} from '../configHandler';
+logTime('../configHandler');
 import {ConfigKey, AzureFunctionsLanguage, AzureComponentsStorage, DependentExtensions} from '../constants';
-
+logTime('../constants');
 import {ServiceClientCredentials} from 'ms-rest';
+logTime('ms-rest');
 import {AzureAccount, AzureResourceFilter} from '../azure-account.api';
+logTime('../azure-account.api');
 import {StringDictionary} from 'azure-arm-website/lib/models';
+logTime('azure-arm-website/lib/models');
 import {getExtension} from './Apis';
+logTime('./Apis');
 import {extensionName} from './Interfaces/Api';
+logTime('./Interfaces/Api');
 import {Guid} from 'guid-typescript';
+logTime('guid-typescript');
 import {AzureComponentConfig, AzureConfigs, ComponentInfo, DependencyConfig, Dependency} from './AzureComponentConfig';
-import {AzureUtility} from './AzureUtility';
+logTime('./AzureComponentConfig');
+
+type AzureUtilityType = typeof import('./AzureUtility');
+let lazyAzureUtilityModule: AzureUtilityType|undefined;
 
 export class AzureFunctions implements Component, Provisionable, Deployable {
   dependencies: DependencyConfig[] = [];
@@ -212,6 +236,10 @@ export class AzureFunctions implements Component, Provisionable, Deployable {
 
   async provision(): Promise<boolean> {
     try {
+      if (!lazyAzureUtilityModule) {
+        lazyAzureUtilityModule = await import('./AzureUtility');
+      }
+      const AzureUtility = lazyAzureUtilityModule.AzureUtility;
       const subscriptionId = AzureUtility.subscriptionId;
       if (!subscriptionId) {
         return false;

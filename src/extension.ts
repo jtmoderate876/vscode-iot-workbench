@@ -2,26 +2,51 @@
 // Licensed under the MIT License.
 
 'use strict';
+const startTime = new Date().getTime();
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`IDW${name}: ` + duration);
+}
+
+logTime('Begin Load');
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+logTime('vscode');
 import {ProjectInitializer} from './projectInitializer';
+logTime('./projectInitializer');
 import {DeviceOperator} from './DeviceOperator';
+logTime('./DeviceOperator');
 import {AzureOperator} from './AzureOperator';
-import {IoTProject} from './Models/IoTProject';
+logTime('./AzureOperator');
 import {ExampleExplorer} from './exampleExplorer';
+logTime('./exampleExplorer');
 import {IoTWorkbenchSettings} from './IoTSettings';
+logTime('./IoTSettings');
 import {ConfigHandler} from './configHandler';
+logTime('./configHandler');
 import {ConfigKey, EventNames, ContentView} from './constants';
+logTime('./constants');
 import {ContentProvider} from './contentProvider';
+logTime('./contentProvider');
 import {TelemetryContext, callWithTelemetry, TelemetryWorker} from './telemetry';
+logTime('./telemetry');
 import {UsbDetector} from './usbDetector';
+logTime('./usbDetector');
 import {HelpProvider} from './helpProvider';
+logTime('./helpProvider');
 
+type IoTProjectModuleType = typeof import('./Models/IoTProject');
+let lazyIoTProjectModule: IoTProjectModuleType|undefined;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+  logTime('Begin Activate');
   // Use the console to output diagnostic information (console.log) and errors
   // (console.error) This line of code will only be executed once when your
   // extension is activated
@@ -30,14 +55,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const outputChannel: vscode.OutputChannel =
       vscode.window.createOutputChannel('Azure IoT Device Workbench');
-
   // Initialize Telemetry
   TelemetryWorker.Initialize(context);
-
   const telemetryContext: TelemetryContext = {
     properties: {result: 'Succeeded', error: '', errorMessage: ''},
     measurements: {duration: 0}
   };
+  if (!lazyIoTProjectModule) {
+    lazyIoTProjectModule = await import('./Models/IoTProject');
+  }
+  const IoTProject = lazyIoTProjectModule.IoTProject;
   const iotProject = new IoTProject(context, outputChannel, telemetryContext);
   if (vscode.workspace.workspaceFolders) {
     try {
@@ -46,7 +73,6 @@ export async function activate(context: vscode.ExtensionContext) {
       // do nothing as we are not sure whether the project is initialized.
     }
   }
-
   const projectInitializer = new ProjectInitializer();
   const projectInitializerBinder =
       projectInitializer.InitializeProject.bind(projectInitializer);
@@ -59,14 +85,11 @@ export async function activate(context: vscode.ExtensionContext) {
       exampleExplorer.selectBoard.bind(exampleExplorer);
   const initializeExampleBinder =
       exampleExplorer.initializeExample.bind(exampleExplorer);
-
-
   ContentProvider.getInstance().Initialize(
       context.extensionPath, exampleExplorer);
   context.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(
           ContentView.workbenchContentProtocol, ContentProvider.getInstance()));
-
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with  registerCommand
   // The commandId parameter must match the command field in package.json
@@ -124,7 +147,6 @@ export async function activate(context: vscode.ExtensionContext) {
         EventNames.loadExampleEvent, outputChannel, true, context,
         initializeExampleBinder);
   };
-
   const projectInit = vscode.commands.registerCommand(
       'iotworkbench.initializeProject', projectInitProvider);
 
@@ -164,7 +186,6 @@ export async function activate(context: vscode.ExtensionContext) {
         await settings.setWorkbenchPath();
         return;
       });
-
   context.subscriptions.push(projectInit);
   context.subscriptions.push(examples);
   context.subscriptions.push(exampleInitialize);
@@ -176,10 +197,8 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(azureDeploy);
   context.subscriptions.push(deviceToolchain);
   context.subscriptions.push(configureDevice);
-
   const usbDetector = new UsbDetector(context, outputChannel);
   usbDetector.startListening();
-
   const shownHelpPage = ConfigHandler.get<boolean>(ConfigKey.shownHelpPage);
   if (!shownHelpPage) {
     // Do not execute help command here
@@ -198,6 +217,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ConfigHandler.update(
         ConfigKey.shownHelpPage, true, vscode.ConfigurationTarget.Global);
   }
+  logTime('Activated');
+  console.log('Total duration: ' + (new Date().getTime() - startTime));
 }
 
 // this method is called when your extension is deactivated

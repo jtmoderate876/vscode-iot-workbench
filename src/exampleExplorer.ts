@@ -2,21 +2,45 @@
 // Licensed under the MIT License.
 
 'use strict';
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`exampleExplorer${name}: ` + duration);
+}
 
+logTime('Begin Load');
 import * as fs from 'fs-plus';
+logTime('fs-plus');
 import * as path from 'path';
+logTime('path');
 import * as vscode from 'vscode';
+logTime('vscode');
 import {Example} from './Models/Interfaces/Example';
-import request = require('request-promise');
+logTime('./Models/Interfaces/Example');
 import AdmZip = require('adm-zip');
+logTime('adm-zip');
 import {IoTWorkbenchSettings} from './IoTSettings';
+logTime('./IoTSettings');
 import * as utils from './utils';
+logTime('./utils');
 import {Board, BoardQuickPickItem} from './Models/Interfaces/Board';
+logTime('./Models/Interfaces/Board');
 import {TelemetryContext} from './telemetry';
+logTime('./telemetry');
 import {ContentView, FileNames} from './constants';
+logTime('./constants');
 import {ArduinoPackageManager} from './ArduinoPackageManager';
+logTime('./ArduinoPackageManager');
 import {BoardProvider} from './boardProvider';
+logTime('./boardProvider');
 import {ContentProvider} from './contentProvider';
+logTime('./contentProvider');
+
+type RequestPromiseModuleType = typeof import('request-promise');
+let lazyRequestPromiseModule: RequestPromiseModuleType|undefined;
 
 export class ExampleExplorer {
   private exampleList: Example[] = [];
@@ -68,13 +92,18 @@ export class ExampleExplorer {
       channel.append('.');
     }, 1000);
 
-    const options: request.OptionsWithUri = {
+    if (!lazyRequestPromiseModule) {
+      lazyRequestPromiseModule = await import('request-promise');
+    }
+    const requestPromise = lazyRequestPromiseModule;
+
+    const options = {
       method: 'GET',
       uri: url,
       encoding: null  // Binary data
     };
 
-    const zipData = await request(options).promise() as string;
+    const zipData = await requestPromise(options).promise() as string;
     const tempPath = path.join(fsPath, '.temp');
     fs.writeFileSync(path.join(tempPath, 'example.zip'), zipData);
     const zip = new AdmZip(path.join(tempPath, 'example.zip'));

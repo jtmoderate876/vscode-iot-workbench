@@ -2,22 +2,41 @@
 // Licensed under the MIT License.
 
 'use strict';
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(` projectInitializer${name}: ` + duration);
+}
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+logTime('Begin Load');
 import * as vscode from 'vscode';
-import * as fs from 'fs-plus';
+logTime('vscode');
 import * as path from 'path';
-import {IoTProject} from './Models/IoTProject';
+logTime('path');
 import {ProjectTemplate, ProjectTemplateType} from './Models/Interfaces/ProjectTemplate';
-import {DialogResponses} from './DialogResponses';
-import {IoTWorkbenchSettings} from './IoTSettings';
+logTime('./Models/Interfaces/ProjectTemplate');
 import * as utils from './utils';
+logTime('./utils');
 import {Board, BoardInstallation, BoardQuickPickItem} from './Models/Interfaces/Board';
+logTime('./Models/Interfaces/Board');
 import {TelemetryContext} from './telemetry';
+logTime('./telemetry');
 import {ArduinoPackageManager} from './ArduinoPackageManager';
+logTime('./ArduinoPackageManager');
 import {FileNames} from './constants';
+logTime('./constants');
 import {BoardProvider} from './boardProvider';
-import {AzureFunctions} from './Models/AzureFunctions';
+logTime('./boardProvider');
+
+type AzureFunctionsModuleType = typeof import('./Models/AzureFunctions');
+let lazyAzureFunctionsModule: AzureFunctionsModuleType|undefined;
+
+type IoTProjectModuleType = typeof import('./Models/IoTProject');
+let lazyIoTProjectModule: IoTProjectModuleType|undefined;
 
 const constants = {
   defaultProjectName: 'IoTproject'
@@ -140,6 +159,11 @@ export class ProjectInitializer {
             }
 
             if (result.type === 'AzureFunctions') {
+              if (!lazyAzureFunctionsModule) {
+                lazyAzureFunctionsModule =
+                    await import('./Models/AzureFunctions');
+              }
+              const AzureFunctions = lazyAzureFunctionsModule.AzureFunctions;
               const isFunctionsExtensionAvailable =
                   await AzureFunctions.isAvailable();
               if (!isFunctionsExtensionAvailable) {
@@ -176,6 +200,10 @@ export class ProjectInitializer {
               return;
             }
 
+            if (!lazyIoTProjectModule) {
+              lazyIoTProjectModule = await import('./Models/IoTProject');
+            }
+            const IoTProject = lazyIoTProjectModule.IoTProject;
             const project = new IoTProject(context, channel, telemetryContext);
             return await project.create(
                 rootPath, result, boardSelection.id, openInNewWindow);
@@ -184,7 +212,6 @@ export class ProjectInitializer {
           }
         });
   }
-
 
   private async GenerateProjectFolder(rootPath: string) {
     let counter = 0;

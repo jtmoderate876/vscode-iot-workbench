@@ -5,16 +5,22 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import {IoTProject} from './Models/IoTProject';
 import {TelemetryContext} from './telemetry';
 import {Board, BoardQuickPickItem} from './Models/Interfaces/Board';
 import {ArduinoPackageManager} from './ArduinoPackageManager';
 import {BoardProvider} from './boardProvider';
 
+type IoTProjectModuleType = typeof import('./Models/IoTProject');
+let lazyIoTProjectModule: IoTProjectModuleType|undefined;
+
 export class DeviceOperator {
   async compile(
       context: vscode.ExtensionContext, channel: vscode.OutputChannel,
       telemetryContext: TelemetryContext) {
+    if (!lazyIoTProjectModule) {
+      lazyIoTProjectModule = await import('./Models/IoTProject');
+    }
+    const IoTProject = lazyIoTProjectModule.IoTProject;
     const project = new IoTProject(context, channel, telemetryContext);
     const result = await project.load();
     if (!result) {
@@ -27,6 +33,10 @@ export class DeviceOperator {
   async upload(
       context: vscode.ExtensionContext, channel: vscode.OutputChannel,
       telemetryContext: TelemetryContext) {
+    if (!lazyIoTProjectModule) {
+      lazyIoTProjectModule = await import('./Models/IoTProject');
+    }
+    const IoTProject = lazyIoTProjectModule.IoTProject;
     const project = new IoTProject(context, channel, telemetryContext);
     const result = await project.load();
     if (!result) {
@@ -39,6 +49,10 @@ export class DeviceOperator {
   async configDeviceSettings(
       context: vscode.ExtensionContext, channel: vscode.OutputChannel,
       telemetryContext: TelemetryContext) {
+    if (!lazyIoTProjectModule) {
+      lazyIoTProjectModule = await import('./Models/IoTProject');
+    }
+    const IoTProject = lazyIoTProjectModule.IoTProject;
     const project = new IoTProject(context, channel, telemetryContext);
     const result = await project.load();
     if (!result) {

@@ -1,19 +1,38 @@
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`    AzureUtility${name}: ` + duration);
+}
+logTime('Begin Load');
 import {ResourceManagementClient, ResourceModels, SubscriptionClient} from 'azure-arm-resource';
+logTime('azure-arm-resource');
 import * as fs from 'fs-plus';
+logTime('fs-plus');
 import {HttpMethods, WebResource} from 'ms-rest';
+logTime('ms-rest');
 import * as path from 'path';
+logTime('path');
 import * as vscode from 'vscode';
-
+logTime('vscode');
 import request = require('request-promise');
+logTime('request-promise');
 import rq = require('request');
-
+logTime('request');
 import {AzureAccount, AzureResourceFilter, AzureSession} from '../azure-account.api';
+logTime('../azure-account.api');
 import {ConfigHandler} from '../configHandler';
-
+logTime('../configHandler');
 import {getExtension} from './Apis';
+logTime('./Apis');
 import {extensionName} from './Interfaces/Api';
+logTime('./Interfaces/Api');
 import {TelemetryWorker, TelemetryContext} from '../telemetry';
+logTime('../telemetry');
 import {EventNames} from '../constants';
+logTime('../constants');
 
 export interface ARMParameters {
   [key: string]: {value: string|number|boolean|null};

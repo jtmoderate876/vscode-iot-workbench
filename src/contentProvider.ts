@@ -1,11 +1,29 @@
-import * as express from 'express';
-import * as vscode from 'vscode';
-import request = require('request-promise');
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`contentProvider${name}: ` + duration);
+}
 
+logTime('Begin Load');
+import * as express from 'express';
+logTime('express');
+import * as vscode from 'vscode';
+logTime('vscode');
 import {ContentView, EventNames} from './constants';
-import {ExampleExplorer} from './exampleExplorer';
+logTime('./constants');
 import {LocalWebServer} from './localWebServer';
-import {TelemetryContext, TelemetryWorker} from './telemetry';
+logTime('./localWebServer');
+
+type ExampleExplorer = import('./exampleExplorer').ExampleExplorer;
+type RequestPromiseModuleType = typeof import('request-promise');
+let lazyRequestPromiseModule: RequestPromiseModuleType|undefined;
+
+type TelemetryModuleType = typeof import('./telemetry');
+type telemetryContext = import('./telemetry').TelemetryContext;
+let lazyTelemetryModule: TelemetryModuleType|undefined;
 
 export class ContentProvider implements vscode.TextDocumentContentProvider {
   private _webserver: LocalWebServer|null = null;
@@ -80,6 +98,7 @@ export class ContentProvider implements vscode.TextDocumentContentProvider {
       throw new Error('_exampleExplorer is not initialized.');
     }
 
+
     const exampleExplorer = this._exampleExplorer;
     exampleExplorer.setSelectedExample(
         req.query.name, req.query.url, req.query.board);
@@ -95,7 +114,12 @@ export class ContentProvider implements vscode.TextDocumentContentProvider {
         'vscode.open', vscode.Uri.parse(req.query.url));
 
     if (req.query.example) {
-      const telemetryContext: TelemetryContext = {
+      if (!lazyTelemetryModule) {
+        lazyTelemetryModule = await import('./telemetry');
+      }
+      const TelemetryWorker = lazyTelemetryModule.TelemetryWorker;
+
+      const telemetryContext: telemetryContext = {
         properties: {
           result: 'Succeeded',
           message: req.query.example,
@@ -116,10 +140,13 @@ export class ContentProvider implements vscode.TextDocumentContentProvider {
       return res.json({code: 1});
     }
 
-    const options: request
-        .OptionsWithUri = {method: 'GET', uri: req.query.url, encoding: 'utf8'};
+    const options = {method: 'GET', uri: req.query.url, encoding: 'utf8'};
 
-    const feed = await request(options).promise() as string;
+    if (!lazyRequestPromiseModule) {
+      lazyRequestPromiseModule = await import('request-promise');
+    }
+    const requestPromise = lazyRequestPromiseModule;
+    const feed = await requestPromise(options).promise() as string;
     return res.send(feed);
   }
 }

@@ -1,36 +1,80 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
+let lastLogTime = 0;
+function logTime(name?: string|number) {
+  const now = new Date().getTime();
+  const duration = lastLogTime ? now - lastLogTime : 0;
+  lastLogTime = now;
+  name = name !== undefined ? '[' + name.toString() + ']' : '';
+  console.log(`  IoTProject${name}: ` + duration);
+}
+logTime('Begin Load');
 import * as fs from 'fs-plus';
+logTime('fs-plus');
 import * as path from 'path';
+logTime('path');
 import * as vscode from 'vscode';
-
+logTime('vscode');
 import {ConfigHandler} from '../configHandler';
+logTime('../configHandler');
 import {ConfigKey, FileNames} from '../constants';
+logTime('../constants');
 import {EventNames} from '../constants';
+logTime('../constants');
 import {TelemetryContext, TelemetryWorker} from '../telemetry';
+logTime('../telemetry');
 import {askAndNewProject, askAndOpenProject} from '../utils';
-
+logTime('../utils');
 import {checkAzureLogin} from './Apis';
-import {AZ3166Device} from './AZ3166Device';
-import {AzureConfigFileHandler, AzureConfigs, Dependency, DependencyType} from './AzureComponentConfig';
-import {AzureFunctions} from './AzureFunctions';
-import {AzureUtility} from './AzureUtility';
-import {CosmosDB} from './CosmosDB';
-import {Esp32Device} from './Esp32Device';
+logTime('./Apis');
+import {AzureConfigFileHandler, Dependency, DependencyType} from './AzureComponentConfig';
+logTime('./AzureComponentConfig');
 import {Compilable} from './Interfaces/Compilable';
+logTime('./Interfaces/Compilable');
 import {Component, ComponentType} from './Interfaces/Component';
+logTime('./Interfaces/Component');
 import {Deployable} from './Interfaces/Deployable';
+logTime('./Interfaces/Deployable');
 import {Device} from './Interfaces/Device';
+logTime('./Interfaces/Device');
 import {ProjectTemplate, ProjectTemplateType} from './Interfaces/ProjectTemplate';
+logTime('./Interfaces/ProjectTemplate');
 import {Provisionable} from './Interfaces/Provisionable';
+logTime('./Interfaces/Provisionable');
 import {Uploadable} from './Interfaces/Uploadable';
+logTime('./Interfaces/Uploadable');
 import {Workspace} from './Interfaces/Workspace';
-import {IoTButtonDevice} from './IoTButtonDevice';
-import {IoTHub} from './IoTHub';
-import {IoTHubDevice} from './IoTHubDevice';
-import {RaspberryPiDevice} from './RaspberryPiDevice';
-import {StreamAnalyticsJob} from './StreamAnalyticsJob';
+logTime('./Interfaces/Workspace');
+
+type AzureFunctionsModuleType = typeof import('./AzureFunctions');
+let lazyAzureFunctionsModule: AzureFunctionsModuleType|undefined;
+
+type AzureUtilityModuleType = typeof import('./AzureUtility');
+let lazyAzureUtilityModule: AzureUtilityModuleType|undefined;
+
+type CosmosDBModuleType = typeof import('./CosmosDB');
+let lazyCosmosDBModule: CosmosDBModuleType|undefined;
+
+type AZ3166DeviceModuleType = typeof import('./AZ3166Device');
+let lazyAZ3166DeviceModule: AZ3166DeviceModuleType|undefined;
+
+type Esp32DeviceModuleType = typeof import('./Esp32Device');
+let lazyEsp32DeviceModule: Esp32DeviceModuleType|undefined;
+
+type IoTButtonDeviceModuleType = typeof import('./IoTButtonDevice');
+let lazyIoTButtonDeviceModule: IoTButtonDeviceModuleType|undefined;
+
+type IoTHubDeviceModuleType = typeof import('./IoTHubDevice');
+let lazyIoTHubDeviceModule: IoTHubDeviceModuleType|undefined;
+
+type RaspberryPiDeviceModuleType = typeof import('./RaspberryPiDevice');
+let lazyRaspberryPiDeviceModule: RaspberryPiDeviceModuleType|undefined;
+
+type IoTHubModuleType = typeof import('./IoTHub');
+let lazyIoTHubModule: IoTHubModuleType|undefined;
+
+type StreamAnalyticsJobModuleType = typeof import('./StreamAnalyticsJob');
+let lazyStreamAnalyticsJobModule: StreamAnalyticsJobModuleType|undefined;
 
 const constants = {
   deviceDefaultFolderName: 'Device',
@@ -102,15 +146,31 @@ export class IoTProject {
         return false;
       }
       let device = null;
-      if (boardId === AZ3166Device.boardId) {
+      if (boardId === 'devkit') {
+        if (!lazyAZ3166DeviceModule) {
+          lazyAZ3166DeviceModule = await import('./AZ3166Device');
+        }
+        const AZ3166Device = lazyAZ3166DeviceModule.AZ3166Device;
         device = new AZ3166Device(
             this.extensionContext, this.channel, deviceLocation);
-      } else if (boardId === IoTButtonDevice.boardId) {
+      } else if (boardId === 'iotbutton') {
+        if (!lazyIoTButtonDeviceModule) {
+          lazyIoTButtonDeviceModule = await import('./IoTButtonDevice');
+        }
+        const IoTButtonDevice = lazyIoTButtonDeviceModule.IoTButtonDevice;
         device = new IoTButtonDevice(this.extensionContext, deviceLocation);
-      } else if (boardId === Esp32Device.boardId) {
+      } else if (boardId === 'esp32') {
+        if (!lazyEsp32DeviceModule) {
+          lazyEsp32DeviceModule = await import('./Esp32Device');
+        }
+        const Esp32Device = lazyEsp32DeviceModule.Esp32Device;
         device = new Esp32Device(
             this.extensionContext, this.channel, deviceLocation);
-      } else if (boardId === RaspberryPiDevice.boardId) {
+      } else if (boardId === 'raspberrypi') {
+        if (!lazyRaspberryPiDeviceModule) {
+          lazyRaspberryPiDeviceModule = await import('./RaspberryPiDevice');
+        }
+        const RaspberryPiDevice = lazyRaspberryPiDeviceModule.RaspberryPiDevice;
         device = new RaspberryPiDevice(
             this.extensionContext, deviceLocation, this.channel);
       }
@@ -123,10 +183,19 @@ export class IoTProject {
     const componentConfigs = azureConfigFileHandler.getSortedComponents();
     if (!componentConfigs || componentConfigs.length === 0) {
       // Support backward compact
+      if (!lazyIoTHubModule) {
+        lazyIoTHubModule = await import('./IoTHub');
+      }
+      const IoTHub = lazyIoTHubModule.IoTHub;
       const iotHub = new IoTHub(this.projectRootPath, this.channel);
       await iotHub.updateConfigSettings();
       await iotHub.load();
       this.componentList.push(iotHub);
+
+      if (!lazyIoTHubDeviceModule) {
+        lazyIoTHubDeviceModule = await import('./IoTHubDevice');
+      }
+      const IoTHubDevice = lazyIoTHubDeviceModule.IoTHubDevice;
       const device = new IoTHubDevice(this.channel);
       this.componentList.push(device);
 
@@ -135,6 +204,11 @@ export class IoTProject {
         const functionLocation = path.join(
             vscode.workspace.workspaceFolders[0].uri.fsPath, '..',
             functionPath);
+        if (!lazyAzureFunctionsModule) {
+          console.log('Load Azure Functions from load1');
+          lazyAzureFunctionsModule = await import('./AzureFunctions');
+        }
+        const AzureFunctions = lazyAzureFunctionsModule.AzureFunctions;
         const functionApp = new AzureFunctions(
             functionLocation, functionPath, this.channel, null,
             [{component: iotHub, type: DependencyType.Input}]);
@@ -156,10 +230,19 @@ export class IoTProject {
     for (const componentConfig of componentConfigs) {
       switch (componentConfig.type) {
         case 'IoTHub': {
+          if (!lazyIoTHubModule) {
+            lazyIoTHubModule = await import('./IoTHub');
+          }
+          const IoTHub = lazyIoTHubModule.IoTHub;
           const iotHub = new IoTHub(this.projectRootPath, this.channel);
           await iotHub.load();
           components[iotHub.id] = iotHub;
           this.componentList.push(iotHub);
+
+          if (!lazyIoTHubDeviceModule) {
+            lazyIoTHubDeviceModule = await import('./IoTHubDevice');
+          }
+          const IoTHubDevice = lazyIoTHubDeviceModule.IoTHubDevice;
           const device = new IoTHubDevice(this.channel);
           this.componentList.push(device);
 
@@ -175,6 +258,11 @@ export class IoTProject {
               vscode.workspace.workspaceFolders[0].uri.fsPath, '..',
               functionPath);
           if (functionLocation) {
+            if (!lazyAzureFunctionsModule) {
+              console.log('Load Azure Functions from load2');
+              lazyAzureFunctionsModule = await import('./AzureFunctions');
+            }
+            const AzureFunctions = lazyAzureFunctionsModule.AzureFunctions;
             const functionApp = new AzureFunctions(
                 functionLocation, functionPath, this.channel);
             await functionApp.load();
@@ -195,6 +283,11 @@ export class IoTProject {
           const queryPath = path.join(
               vscode.workspace.workspaceFolders[0].uri.fsPath, '..',
               constants.asaFolderName, 'query.asaql');
+          if (!lazyStreamAnalyticsJobModule) {
+            lazyStreamAnalyticsJobModule = await import('./StreamAnalyticsJob');
+          }
+          const StreamAnalyticsJob =
+              lazyStreamAnalyticsJobModule.StreamAnalyticsJob;
           const asa = new StreamAnalyticsJob(
               queryPath, this.extensionContext, this.projectRootPath,
               this.channel, dependencies);
@@ -212,6 +305,10 @@ export class IoTProject {
             }
             dependencies.push({component, type: dependent.type});
           }
+          if (!lazyCosmosDBModule) {
+            lazyCosmosDBModule = await import('./CosmosDB');
+          }
+          const CosmosDB = lazyCosmosDBModule.CosmosDB;
           const cosmosDB = new CosmosDB(
               this.extensionContext, this.projectRootPath, this.channel,
               dependencies);
@@ -326,6 +423,11 @@ export class IoTProject {
     let resourceGroup: string|undefined = '';
     if (provisionItemList.length > 0) {
       await checkAzureLogin();
+      if (!lazyAzureUtilityModule) {
+        console.log('Load Azure Utility from provision');
+        lazyAzureUtilityModule = await import('./AzureUtility');
+      }
+      const AzureUtility = lazyAzureUtilityModule.AzureUtility;
       AzureUtility.init(this.extensionContext, this.channel);
       resourceGroup = await AzureUtility.getResourceGroup();
       subscriptionId = AzureUtility.subscriptionId;
@@ -455,18 +557,34 @@ export class IoTProject {
 
     workspace.folders.push({path: constants.deviceDefaultFolderName});
     let device: Component;
-    if (boardId === AZ3166Device.boardId) {
+    if (boardId === 'devkit') {
+      if (!lazyAZ3166DeviceModule) {
+        lazyAZ3166DeviceModule = await import('./AZ3166Device');
+      }
+      const AZ3166Device = lazyAZ3166DeviceModule.AZ3166Device;
       device = new AZ3166Device(
           this.extensionContext, this.channel, deviceDir,
           projectTemplateItem.sketch);
-    } else if (boardId === IoTButtonDevice.boardId) {
+    } else if (boardId === 'iotbutton') {
+      if (!lazyIoTButtonDeviceModule) {
+        lazyIoTButtonDeviceModule = await import('./IoTButtonDevice');
+      }
+      const IoTButtonDevice = lazyIoTButtonDeviceModule.IoTButtonDevice;
       device = new IoTButtonDevice(
           this.extensionContext, deviceDir, projectTemplateItem.sketch);
-    } else if (boardId === Esp32Device.boardId) {
+    } else if (boardId === 'esp32') {
+      if (!lazyEsp32DeviceModule) {
+        lazyEsp32DeviceModule = await import('./Esp32Device');
+      }
+      const Esp32Device = lazyEsp32DeviceModule.Esp32Device;
       device = new Esp32Device(
           this.extensionContext, this.channel, deviceDir,
           projectTemplateItem.sketch);
-    } else if (boardId === RaspberryPiDevice.boardId) {
+    } else if (boardId === 'raspberrypi') {
+      if (!lazyRaspberryPiDeviceModule) {
+        lazyRaspberryPiDeviceModule = await import('./RaspberryPiDevice');
+      }
+      const RaspberryPiDevice = lazyRaspberryPiDeviceModule.RaspberryPiDevice;
       device = new RaspberryPiDevice(
           this.extensionContext, deviceDir, this.channel,
           projectTemplateItem.sketch);
@@ -498,6 +616,10 @@ export class IoTProject {
         // Save data to configFile
         break;
       case ProjectTemplateType.IotHub: {
+        if (!lazyIoTHubModule) {
+          lazyIoTHubModule = await import('./IoTHub');
+        }
+        const IoTHub = lazyIoTHubModule.IoTHub;
         const iothub = new IoTHub(this.projectRootPath, this.channel);
         const isPrerequisitesAchieved = await iothub.checkPrerequisites();
         if (!isPrerequisitesAchieved) {
@@ -507,6 +629,10 @@ export class IoTProject {
         break;
       }
       case ProjectTemplateType.AzureFunctions: {
+        if (!lazyIoTHubModule) {
+          lazyIoTHubModule = await import('./IoTHub');
+        }
+        const IoTHub = lazyIoTHubModule.IoTHub;
         const iothub = new IoTHub(this.projectRootPath, this.channel);
         const isIotHubPrerequisitesAchieved = await iothub.checkPrerequisites();
         if (!isIotHubPrerequisitesAchieved) {
@@ -522,6 +648,11 @@ export class IoTProject {
 
         workspace.folders.push({path: constants.functionDefaultFolderName});
 
+        if (!lazyAzureFunctionsModule) {
+          console.log('Load Azure Functions from create');
+          lazyAzureFunctionsModule = await import('./AzureFunctions');
+        }
+        const AzureFunctions = lazyAzureFunctionsModule.AzureFunctions;
         const azureFunctions = new AzureFunctions(
             functionDir, constants.functionDefaultFolderName, this.channel,
             null,
@@ -544,12 +675,19 @@ export class IoTProject {
         break;
       }
       case ProjectTemplateType.StreamAnalytics: {
+        if (!lazyIoTHubModule) {
+          lazyIoTHubModule = await import('./IoTHub');
+        }
+        const IoTHub = lazyIoTHubModule.IoTHub;
         const iothub = new IoTHub(this.projectRootPath, this.channel);
         const isIotHubPrerequisitesAchieved = await iothub.checkPrerequisites();
         if (!isIotHubPrerequisitesAchieved) {
           return false;
         }
-
+        if (!lazyCosmosDBModule) {
+          lazyCosmosDBModule = await import('./CosmosDB');
+        }
+        const CosmosDB = lazyCosmosDBModule.CosmosDB;
         const cosmosDB = new CosmosDB(
             this.extensionContext, this.projectRootPath, this.channel);
         const isCosmosDBPrerequisitesAchieved =
@@ -572,7 +710,11 @@ export class IoTProject {
                 .replace(/\[input\]/, `"iothub-${iothub.id}"`)
                 .replace(/\[output\]/, `"cosmosdb-${cosmosDB.id}"`);
         fs.writeFileSync(queryPath, asaQueryContent);
-
+        if (!lazyStreamAnalyticsJobModule) {
+          lazyStreamAnalyticsJobModule = await import('./StreamAnalyticsJob');
+        }
+        const StreamAnalyticsJob =
+            lazyStreamAnalyticsJobModule.StreamAnalyticsJob;
         const asa = new StreamAnalyticsJob(
             queryPath, this.extensionContext, this.projectRootPath,
             this.channel, [
